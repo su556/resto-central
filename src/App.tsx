@@ -16,6 +16,7 @@ import AdminDashboard from "@/pages/admin/Dashboard";
 import MenuManagement from "@/pages/admin/MenuManagement";
 import OrderManagement from "@/pages/admin/OrderManagement";
 import Offers from "@/pages/admin/Offers";
+import RestaurantSettings from "@/pages/admin/RestaurantSettings";
 import AdminRiders from "@/pages/admin/Riders";
 import UserManagement from "@/pages/admin/UserManagement";
 import RiderHome from "@/pages/rider/RiderHome";
