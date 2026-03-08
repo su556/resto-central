@@ -41,10 +41,18 @@ export default function Landing() {
     <div>
       <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-secondary to-background py-16 md:py-24">
         <div className="container text-center space-y-6">
-          <Badge variant="secondary" className="text-sm px-4 py-1.5">
-            <Star className="h-3.5 w-3.5 mr-1 fill-warning text-warning" />
-            {restaurant.rating} • {restaurant.review_count.toLocaleString()} reviews
-          </Badge>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <Badge variant="secondary" className="text-sm px-4 py-1.5">
+              <Star className="h-3.5 w-3.5 mr-1 fill-warning text-warning" />
+              {restaurant.rating} • {restaurant.review_count.toLocaleString()} reviews
+            </Badge>
+            {openStatus && (
+              <Badge className={`text-sm px-4 py-1.5 ${openStatus.isOpen ? "bg-success/15 text-success border-success/30 hover:bg-success/20" : "bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20"}`} variant="outline">
+                <span className={`h-2 w-2 rounded-full mr-2 ${openStatus.isOpen ? "bg-success animate-pulse" : "bg-destructive"}`} />
+                {openStatus.label}
+              </Badge>
+            )}
+          </div>
           <h1 className="text-4xl md:text-6xl font-display font-bold tracking-tight text-foreground">
             {restaurant.name}
           </h1>
