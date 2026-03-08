@@ -6,7 +6,7 @@ import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { useApp } from "@/contexts/AppContext";
 
 export default function Cart() {
-  const { cart, updateQuantity, removeFromCart, cartTotal, clearCart } = useApp();
+  const { cart, updateQuantity, removeFromCart, cartTotal } = useApp();
   const navigate = useNavigate();
 
   if (cart.length === 0) {
@@ -27,7 +27,7 @@ export default function Cart() {
         {cart.map(item => (
           <Card key={item.dish.id}>
             <CardContent className="p-4 flex gap-4">
-              <img src={item.dish.image} alt={item.dish.name} className="w-20 h-20 rounded-lg object-cover shrink-0" />
+              <img src={item.dish.image_url || "/placeholder.svg"} alt={item.dish.name} className="w-20 h-20 rounded-lg object-cover shrink-0" />
               <div className="flex-1 space-y-1">
                 <div className="flex items-start justify-between">
                   <h3 className="font-semibold">{item.dish.name}</h3>
