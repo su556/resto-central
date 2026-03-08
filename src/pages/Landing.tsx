@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Star, Clock, MapPin, ChevronRight, Loader2 } from "lucide-react";
+import { Star, Clock, MapPin, ChevronRight, Loader2, Phone } from "lucide-react";
 import { useApp } from "@/contexts/AppContext";
 import { useDefaultRestaurant, useDishes } from "@/hooks/useRestaurantData";
 
@@ -80,10 +80,49 @@ export default function Landing() {
       </section>
 
       <section className="bg-card border-t">
-        <div className="container py-12 space-y-4 text-center">
-          <h2 className="text-2xl font-display font-bold">About Us</h2>
-          <p className="text-muted-foreground max-w-xl mx-auto">{restaurant.description}</p>
-          <p className="text-sm text-muted-foreground">{restaurant.address} • {restaurant.phone}</p>
+        <div className="container py-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-4xl mx-auto">
+            <div className="space-y-4">
+              <h2 className="text-2xl font-display font-bold">About Us</h2>
+              <p className="text-muted-foreground">{restaurant.description}</p>
+              {restaurant.address && (
+                <p className="text-sm text-muted-foreground flex items-start gap-2">
+                  <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+                  {restaurant.address}
+                </p>
+              )}
+              {restaurant.phone && (
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Phone className="h-4 w-4 shrink-0 text-primary" />
+                  {restaurant.phone}
+                </p>
+              )}
+            </div>
+
+            {(restaurant as any).operating_hours && (
+              <div className="space-y-4">
+                <h2 className="text-2xl font-display font-bold flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-primary" /> Hours
+                </h2>
+                <div className="space-y-2">
+                  {["monday","tuesday","wednesday","thursday","friday","saturday","sunday"].map((day) => {
+                    const hours = ((restaurant as any).operating_hours as Record<string, { open: string; close: string; is_closed: boolean }>)[day];
+                    if (!hours) return null;
+                    const today = new Date().toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+                    const isToday = today === day;
+                    return (
+                      <div key={day} className={`flex justify-between text-sm py-1.5 px-3 rounded-md ${isToday ? "bg-primary/10 font-semibold" : ""}`}>
+                        <span className="capitalize">{day}</span>
+                        <span className={hours.is_closed ? "text-destructive" : "text-muted-foreground"}>
+                          {hours.is_closed ? "Closed" : `${hours.open} – ${hours.close}`}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </section>
     </div>
