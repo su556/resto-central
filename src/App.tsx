@@ -18,6 +18,7 @@ import Offers from "@/pages/admin/Offers";
 import AdminRiders from "@/pages/admin/Riders";
 import RiderHome from "@/pages/rider/RiderHome";
 import NotFound from "@/pages/NotFound";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
