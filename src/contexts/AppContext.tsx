@@ -1,11 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { CartItem, Dish, Order, Rider, Offer, INITIAL_ORDERS, INITIAL_RIDERS, INITIAL_OFFERS } from "@/data/mockData";
 
-export type UserRole = "customer" | "admin" | "rider";
-
 interface AppState {
-  role: UserRole;
-  setRole: (role: UserRole) => void;
   cart: CartItem[];
   addToCart: (dish: Dish) => void;
   removeFromCart: (dishId: string) => void;
@@ -23,7 +19,6 @@ interface AppState {
   addOffer: (offer: Offer) => void;
   toggleOffer: (offerId: string) => void;
   deleteOffer: (offerId: string) => void;
-  // Rider-specific
   currentRiderId: string;
 }
 
@@ -36,12 +31,11 @@ export const useApp = () => {
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [role, setRole] = useState<UserRole>("customer");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
   const [riders, setRiders] = useState<Rider[]>(INITIAL_RIDERS);
   const [offers, setOffers] = useState<Offer[]>(INITIAL_OFFERS);
-  const currentRiderId = "r1"; // Mock logged-in rider
+  const currentRiderId = "r1";
 
   const addToCart = useCallback((dish: Dish) => {
     setCart(prev => {
@@ -92,7 +86,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AppContext.Provider value={{
-      role, setRole, cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, cartCount,
+      cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, cartCount,
       orders, updateOrderStatus, addOrder, riders, toggleRiderOnline, assignRider,
       offers, addOffer, toggleOffer, deleteOffer, currentRiderId,
     }}>
