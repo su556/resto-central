@@ -4,7 +4,6 @@ import { useApp } from "@/contexts/AppContext";
 import { ShoppingCart, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RESTAURANT } from "@/data/mockData";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, role, profile, signOut } = useAuth();
@@ -15,7 +14,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <span className="text-xl font-display font-bold text-primary">🍛 {RESTAURANT.name}</span>
+            <span className="text-xl font-display font-bold text-primary">🍛 Spice Garden</span>
           </Link>
 
           <div className="flex items-center gap-2">
@@ -38,7 +37,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </Link>
             )}
 
-            {/* Cart for customer or guest */}
             {(!role || role === "customer") && (
               <Link to="/cart">
                 <Button variant="outline" size="icon" className="relative">

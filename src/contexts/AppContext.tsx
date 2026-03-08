@@ -1,25 +1,19 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
-import { CartItem, Dish, Order, Rider, Offer, INITIAL_ORDERS, INITIAL_RIDERS, INITIAL_OFFERS } from "@/data/mockData";
+import type { DbDish } from "@/hooks/useRestaurantData";
+
+export interface CartItem {
+  dish: DbDish;
+  quantity: number;
+}
 
 interface AppState {
   cart: CartItem[];
-  addToCart: (dish: Dish) => void;
+  addToCart: (dish: DbDish) => void;
   removeFromCart: (dishId: string) => void;
   updateQuantity: (dishId: string, quantity: number) => void;
   clearCart: () => void;
   cartTotal: number;
   cartCount: number;
-  orders: Order[];
-  updateOrderStatus: (orderId: string, status: Order["status"]) => void;
-  addOrder: (order: Order) => void;
-  riders: Rider[];
-  toggleRiderOnline: (riderId: string) => void;
-  assignRider: (orderId: string, riderId: string) => void;
-  offers: Offer[];
-  addOffer: (offer: Offer) => void;
-  toggleOffer: (offerId: string) => void;
-  deleteOffer: (offerId: string) => void;
-  currentRiderId: string;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -32,12 +26,8 @@ export const useApp = () => {
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
-  const [riders, setRiders] = useState<Rider[]>(INITIAL_RIDERS);
-  const [offers, setOffers] = useState<Offer[]>(INITIAL_OFFERS);
-  const currentRiderId = "r1";
 
-  const addToCart = useCallback((dish: Dish) => {
+  const addToCart = useCallback((dish: DbDish) => {
     setCart(prev => {
       const existing = prev.find(i => i.dish.id === dish.id);
       if (existing) return prev.map(i => i.dish.id === dish.id ? { ...i, quantity: i.quantity + 1 } : i);
@@ -59,36 +49,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const cartTotal = cart.reduce((sum, i) => sum + i.dish.price * i.quantity, 0);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
 
-  const updateOrderStatus = useCallback((orderId: string, status: Order["status"]) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
-  }, []);
-
-  const addOrder = useCallback((order: Order) => {
-    setOrders(prev => [order, ...prev]);
-  }, []);
-
-  const toggleRiderOnline = useCallback((riderId: string) => {
-    setRiders(prev => prev.map(r => r.id === riderId ? { ...r, isOnline: !r.isOnline } : r));
-  }, []);
-
-  const assignRider = useCallback((orderId: string, riderId: string) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, riderId, status: "out_for_delivery" as const } : o));
-    setRiders(prev => prev.map(r => r.id === riderId ? { ...r, currentOrderId: orderId } : r));
-  }, []);
-
-  const addOffer = useCallback((offer: Offer) => setOffers(prev => [offer, ...prev]), []);
-  const toggleOffer = useCallback((offerId: string) => {
-    setOffers(prev => prev.map(o => o.id === offerId ? { ...o, isActive: !o.isActive } : o));
-  }, []);
-  const deleteOffer = useCallback((offerId: string) => {
-    setOffers(prev => prev.filter(o => o.id !== offerId));
-  }, []);
-
   return (
     <AppContext.Provider value={{
       cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, cartCount,
-      orders, updateOrderStatus, addOrder, riders, toggleRiderOnline, assignRider,
-      offers, addOffer, toggleOffer, deleteOffer, currentRiderId,
     }}>
       {children}
     </AppContext.Provider>

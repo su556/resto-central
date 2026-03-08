@@ -7,34 +7,73 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useApp } from "@/contexts/AppContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 export default function Checkout() {
-  const { cart, cartTotal, clearCart, addOrder } = useApp();
+  const { cart, cartTotal, clearCart } = useApp();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
-  const [name, setName] = useState("");
+  const [name, setName] = useState(profile?.display_name ?? "");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleOrder = () => {
+  const handleOrder = async () => {
     if (!name || !phone || !address) {
       toast({ title: "Please fill all fields", variant: "destructive" });
       return;
     }
-    const order = {
-      id: `ORD${String(Date.now()).slice(-6)}`,
-      items: cart.map(i => ({ dishName: i.dish.name, quantity: i.quantity, price: i.dish.price })),
-      total: cartTotal + 40,
-      status: "confirmed" as const,
-      customerName: name,
-      customerPhone: phone,
-      address,
-      createdAt: new Date().toISOString(),
-    };
-    addOrder(order);
+    if (!user) {
+      toast({ title: "Please sign in to place an order", variant: "destructive" });
+      navigate("/auth");
+      return;
+    }
+
+    setSubmitting(true);
+    // Get restaurant_id from the first cart item
+    const restaurantId = cart[0]?.dish.restaurant_id;
+    if (!restaurantId) {
+      toast({ title: "Error: no restaurant found", variant: "destructive" });
+      setSubmitting(false);
+      return;
+    }
+
+    const { data: order, error } = await supabase
+      .from("orders")
+      .insert({
+        restaurant_id: restaurantId,
+        customer_id: user.id,
+        customer_name: name,
+        customer_phone: phone,
+        address,
+        total: cartTotal + 40,
+        status: "confirmed",
+      })
+      .select()
+      .single();
+
+    if (error || !order) {
+      toast({ title: "Failed to place order", description: error?.message, variant: "destructive" });
+      setSubmitting(false);
+      return;
+    }
+
+    // Insert order items
+    const items = cart.map(i => ({
+      order_id: order.id,
+      dish_name: i.dish.name,
+      quantity: i.quantity,
+      price: i.dish.price,
+    }));
+
+    await supabase.from("order_items").insert(items);
+
     clearCart();
-    toast({ title: "Order placed! 🎉", description: `Order ${order.id} confirmed.` });
+    toast({ title: "Order placed! 🎉", description: `Your order is confirmed.` });
     navigate(`/track/${order.id}`);
+    setSubmitting(false);
   };
 
   return (
@@ -76,8 +115,8 @@ export default function Checkout() {
         </CardContent>
       </Card>
 
-      <Button className="w-full" size="lg" onClick={handleOrder}>
-        Pay ₹{cartTotal + 40} with Razorpay
+      <Button className="w-full" size="lg" onClick={handleOrder} disabled={submitting}>
+        {submitting ? "Placing Order..." : `Pay ₹${cartTotal + 40} with Razorpay`}
       </Button>
       <p className="text-xs text-center text-muted-foreground">Mock payment — no real transaction</p>
     </div>

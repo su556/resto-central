@@ -1,9 +1,10 @@
 import { useParams } from "react-router-dom";
-import { useApp } from "@/contexts/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Clock, ChefHat, Truck, PartyPopper } from "lucide-react";
+import { CheckCircle2, Clock, ChefHat, Truck, PartyPopper, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import type { DbOrder } from "@/hooks/useRestaurantData";
 
 const STEPS = [
   { key: "confirmed", label: "Confirmed", icon: CheckCircle2 },
@@ -14,22 +15,34 @@ const STEPS = [
 
 export default function OrderTracking() {
   const { orderId } = useParams();
-  const { orders, updateOrderStatus } = useApp();
-  const order = orders.find(o => o.id === orderId);
-  const [autoProgress, setAutoProgress] = useState(true);
+  const [order, setOrder] = useState<DbOrder | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Auto-progress mock
+  const fetchOrder = async () => {
+    if (!orderId) return;
+    const { data } = await supabase
+      .from("orders")
+      .select("*, order_items(*)")
+      .eq("id", orderId)
+      .single();
+    setOrder(data as DbOrder | null);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    if (!order || !autoProgress) return;
-    const statusOrder = ["confirmed", "preparing", "out_for_delivery", "delivered"] as const;
-    const currentIdx = statusOrder.indexOf(order.status as any);
-    if (currentIdx === -1 || currentIdx >= statusOrder.length - 1) return;
+    fetchOrder();
+    const channel = supabase
+      .channel(`order-${orderId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders", filter: `id=eq.${orderId}` }, () => {
+        fetchOrder();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [orderId]);
 
-    const timer = setTimeout(() => {
-      updateOrderStatus(order.id, statusOrder[currentIdx + 1]);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [order?.status, autoProgress]);
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  }
 
   if (!order) {
     return <div className="container py-16 text-center"><h2 className="text-2xl font-display">Order not found</h2></div>;
@@ -41,10 +54,9 @@ export default function OrderTracking() {
     <div className="container py-6 max-w-2xl space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-display font-bold">Track Order</h1>
-        <Badge variant="secondary" className="text-sm">#{order.id}</Badge>
+        <Badge variant="secondary" className="text-sm">#{order.id.slice(0, 8)}</Badge>
       </div>
 
-      {/* Stepper */}
       <Card>
         <CardContent className="p-6">
           <div className="space-y-6">
@@ -71,13 +83,12 @@ export default function OrderTracking() {
         </CardContent>
       </Card>
 
-      {/* Order details */}
       <Card>
         <CardHeader><CardTitle className="text-lg">Order Details</CardTitle></CardHeader>
         <CardContent className="space-y-2">
-          {order.items.map((item, i) => (
+          {order.order_items?.map((item, i) => (
             <div key={i} className="flex justify-between text-sm">
-              <span>{item.dishName} × {item.quantity}</span>
+              <span>{item.dish_name} × {item.quantity}</span>
               <span>₹{item.price * item.quantity}</span>
             </div>
           ))}
