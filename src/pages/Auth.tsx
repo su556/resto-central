@@ -52,6 +52,11 @@ function LoginForm({ onSwitch }: { onSwitch: (m: "login" | "signup" | "forgot") 
         <CardDescription>Sign in to your account</CardDescription>
       </CardHeader>
       <CardContent>
+        <GoogleSignInButton />
+        <div className="relative my-2">
+          <Separator />
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">or</span>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
