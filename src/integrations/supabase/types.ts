@@ -260,6 +260,7 @@ export type Database = {
           id: string
           image_url: string | null
           name: string
+          operating_hours: Json | null
           phone: string | null
           rating: number | null
           review_count: number | null
@@ -273,6 +274,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           name: string
+          operating_hours?: Json | null
           phone?: string | null
           rating?: number | null
           review_count?: number | null
@@ -286,6 +288,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           name?: string
+          operating_hours?: Json | null
           phone?: string | null
           rating?: number | null
           review_count?: number | null
