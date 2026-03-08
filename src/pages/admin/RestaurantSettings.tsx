@@ -4,11 +4,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Save } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Loader2, Save, Clock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyRestaurant } from "@/hooks/useRestaurantData";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+
+const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+type Day = typeof DAYS[number];
+
+interface DayHours {
+  open: string;
+  close: string;
+  is_closed: boolean;
+}
+
+type OperatingHours = Record<Day, DayHours>;
+
+const DEFAULT_HOURS: OperatingHours = {
+  monday: { open: "09:00", close: "22:00", is_closed: false },
+  tuesday: { open: "09:00", close: "22:00", is_closed: false },
+  wednesday: { open: "09:00", close: "22:00", is_closed: false },
+  thursday: { open: "09:00", close: "22:00", is_closed: false },
+  friday: { open: "09:00", close: "22:00", is_closed: false },
+  saturday: { open: "09:00", close: "23:00", is_closed: false },
+  sunday: { open: "09:00", close: "23:00", is_closed: false },
+};
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export default function RestaurantSettings() {
   const { user } = useAuth();
@@ -19,6 +43,7 @@ export default function RestaurantSettings() {
   const [description, setDescription] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [hours, setHours] = useState<OperatingHours>(DEFAULT_HOURS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -36,10 +61,20 @@ export default function RestaurantSettings() {
           setDescription(data.description ?? "");
           setPhone(data.phone ?? "");
           setAddress(data.address ?? "");
+          if (data.operating_hours) {
+            setHours({ ...DEFAULT_HOURS, ...(data.operating_hours as unknown as OperatingHours) });
+          }
         }
         setLoading(false);
       });
   }, [restaurantId]);
+
+  const updateDay = (day: Day, field: keyof DayHours, value: string | boolean) => {
+    setHours((prev) => ({
+      ...prev,
+      [day]: { ...prev[day], [field]: value },
+    }));
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -55,6 +90,7 @@ export default function RestaurantSettings() {
         description: description.trim() || null,
         phone: phone.trim() || null,
         address: address.trim() || null,
+        operating_hours: hours as unknown as Record<string, unknown>,
       })
       .eq("id", restaurantId!);
 
@@ -107,6 +143,45 @@ export default function RestaurantSettings() {
             <Label>Address</Label>
             <Textarea value={address} onChange={e => setAddress(e.target.value)} placeholder="Full restaurant address" maxLength={300} rows={2} />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Clock className="h-5 w-5 text-primary" />
+            Operating Hours
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {DAYS.map((day) => (
+            <div key={day} className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+              <span className="w-24 text-sm font-medium shrink-0">{capitalize(day)}</span>
+              <Switch
+                checked={!hours[day].is_closed}
+                onCheckedChange={(checked) => updateDay(day, "is_closed", !checked)}
+              />
+              {hours[day].is_closed ? (
+                <span className="text-sm text-muted-foreground italic">Closed</span>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="time"
+                    value={hours[day].open}
+                    onChange={(e) => updateDay(day, "open", e.target.value)}
+                    className="w-[130px]"
+                  />
+                  <span className="text-muted-foreground text-sm">to</span>
+                  <Input
+                    type="time"
+                    value={hours[day].close}
+                    onChange={(e) => updateDay(day, "close", e.target.value)}
+                    className="w-[130px]"
+                  />
+                </div>
+              )}
+            </div>
+          ))}
         </CardContent>
       </Card>
 
