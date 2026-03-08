@@ -90,7 +90,7 @@ export default function RestaurantSettings() {
         description: description.trim() || null,
         phone: phone.trim() || null,
         address: address.trim() || null,
-        operating_hours: hours as unknown as Record<string, unknown>,
+        operating_hours: JSON.parse(JSON.stringify(hours)),
       })
       .eq("id", restaurantId!);
 
