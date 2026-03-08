@@ -1,93 +1,113 @@
-import { useApp } from "@/contexts/AppContext";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { MapPin, Package, Bell } from "lucide-react";
+import { MapPin, Bell, Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import type { DbOrder } from "@/hooks/useRestaurantData";
 
 export default function RiderHome() {
-  const { riders, toggleRiderOnline, orders, assignRider, currentRiderId, updateOrderStatus } = useApp();
-  const navigate = useNavigate();
-  const rider = riders.find(r => r.id === currentRiderId)!;
+  const { user, profile } = useAuth();
+  const [orders, setOrders] = useState<DbOrder[]>([]);
+  const [myOrder, setMyOrder] = useState<DbOrder | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const availableOrders = orders.filter(o => o.status === "preparing" && !o.riderId);
-  const myActiveOrder = orders.find(o => o.riderId === currentRiderId && o.status !== "delivered");
+  const fetchOrders = async () => {
+    if (!user) return;
+    // Get available orders (preparing, no rider) and my assigned orders
+    const { data } = await supabase
+      .from("orders")
+      .select("*, order_items(*)")
+      .or(`and(status.eq.preparing,rider_id.is.null),rider_id.eq.${user.id}`)
+      .order("created_at", { ascending: false });
+
+    const all = (data as DbOrder[]) ?? [];
+    setMyOrder(all.find(o => o.rider_id === user.id && o.status !== "delivered") ?? null);
+    setOrders(all.filter(o => !o.rider_id && o.status === "preparing"));
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchOrders();
+    const channel = supabase
+      .channel("rider-orders")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => fetchOrders())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
+
+  const acceptOrder = async (orderId: string) => {
+    if (!user) return;
+    const { error } = await supabase.from("orders")
+      .update({ rider_id: user.id, status: "out_for_delivery" })
+      .eq("id", orderId);
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    else fetchOrders();
+  };
+
+  const markDelivered = async (orderId: string) => {
+    await supabase.from("orders").update({ status: "delivered" }).eq("id", orderId);
+    fetchOrders();
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  }
 
   return (
     <div className="container py-6 max-w-lg mx-auto space-y-6">
-      {/* Rider status */}
       <Card>
-        <CardContent className="p-6 flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-display font-bold">{rider.name}</h2>
-            <p className="text-sm text-muted-foreground">{rider.totalDeliveries} deliveries</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium">{rider.isOnline ? "Online" : "Offline"}</span>
-            <Switch checked={rider.isOnline} onCheckedChange={() => toggleRiderOnline(currentRiderId)} />
-          </div>
+        <CardContent className="p-6">
+          <h2 className="text-xl font-display font-bold">{profile?.display_name ?? "Rider"}</h2>
+          <p className="text-sm text-muted-foreground">Delivery Partner</p>
         </CardContent>
       </Card>
 
-      {/* Active delivery */}
-      {myActiveOrder && (
+      {myOrder && (
         <Card className="border-primary">
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-primary">Active Delivery</h3>
-              <Badge>#{myActiveOrder.id}</Badge>
+              <Badge>#{myOrder.id.slice(0, 8)}</Badge>
             </div>
-            <p className="text-sm flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{myActiveOrder.address}</p>
-            <p className="text-sm text-muted-foreground">{myActiveOrder.items.map(i => `${i.dishName} ×${i.quantity}`).join(", ")}</p>
-            <div className="flex gap-2">
-              {myActiveOrder.status === "out_for_delivery" && (
-                <Button className="flex-1" onClick={() => {
-                  updateOrderStatus(myActiveOrder.id, "delivered");
-                }}>
-                  Mark Delivered
-                </Button>
-              )}
-              {myActiveOrder.status === "preparing" && (
-                <Button className="flex-1" onClick={() => updateOrderStatus(myActiveOrder.id, "out_for_delivery")}>
-                  Picked Up
-                </Button>
-              )}
-            </div>
+            <p className="text-sm flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{myOrder.address}</p>
+            <p className="text-sm text-muted-foreground">
+              {myOrder.order_items?.map(i => `${i.dish_name} ×${i.quantity}`).join(", ")}
+            </p>
+            {myOrder.status === "out_for_delivery" && (
+              <Button className="w-full" onClick={() => markDelivered(myOrder.id)}>Mark Delivered</Button>
+            )}
           </CardContent>
         </Card>
       )}
 
-      {/* Incoming orders */}
-      {rider.isOnline && !myActiveOrder && (
+      {!myOrder && (
         <div className="space-y-3">
           <h3 className="font-display font-bold text-lg flex items-center gap-2">
-            <Bell className="h-5 w-5 text-warning" /> Incoming Orders
+            <Bell className="h-5 w-5 text-warning" /> Available Orders
           </h3>
-          {availableOrders.length === 0 ? (
+          {orders.length === 0 ? (
             <Card><CardContent className="p-6 text-center text-muted-foreground">No orders available right now</CardContent></Card>
           ) : (
-            availableOrders.map(order => (
+            orders.map(order => (
               <Card key={order.id} className="border-warning/50">
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold">#{order.id}</span>
+                    <span className="font-bold">#{order.id.slice(0, 8)}</span>
                     <span className="font-bold text-primary">₹{order.total}</span>
                   </div>
                   <p className="text-sm flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{order.address}</p>
-                  <p className="text-sm text-muted-foreground">{order.items.map(i => `${i.dishName} ×${i.quantity}`).join(", ")}</p>
-                  <Button className="w-full" onClick={() => assignRider(order.id, currentRiderId)}>
-                    Accept Order
-                  </Button>
+                  <p className="text-sm text-muted-foreground">
+                    {order.order_items?.map(i => `${i.dish_name} ×${i.quantity}`).join(", ")}
+                  </p>
+                  <Button className="w-full" onClick={() => acceptOrder(order.id)}>Accept Order</Button>
                 </CardContent>
               </Card>
             ))
           )}
         </div>
-      )}
-
-      {!rider.isOnline && (
-        <Card><CardContent className="p-6 text-center text-muted-foreground">Go online to receive orders</CardContent></Card>
       )}
     </div>
   );
