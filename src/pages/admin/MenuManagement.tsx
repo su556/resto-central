@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyRestaurant, useDishes, type DbDish } from "@/hooks/useRestaurantData";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,13 +24,21 @@ export default function MenuManagement() {
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
   const [isVeg, setIsVeg] = useState(true);
   const [isPopular, setIsPopular] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Image upload state
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const resetForm = () => {
-    setName(""); setPrice(""); setCategory(""); setDescription(""); setImageUrl(""); setIsVeg(true); setIsPopular(false);
+    setName(""); setPrice(""); setCategory(""); setDescription("");
+    setIsVeg(true); setIsPopular(false);
+    setImageFile(null); setImagePreview(null); setExistingImageUrl(null);
   };
 
   const openEdit = (dish: DbDish) => {
@@ -39,9 +47,11 @@ export default function MenuManagement() {
     setPrice(String(dish.price));
     setCategory(dish.category);
     setDescription(dish.description ?? "");
-    setImageUrl(dish.image_url ?? "");
     setIsVeg(dish.is_veg);
     setIsPopular(dish.is_popular);
+    setImageFile(null);
+    setImagePreview(null);
+    setExistingImageUrl(dish.image_url);
     setOpen(true);
   };
 
@@ -51,9 +61,58 @@ export default function MenuManagement() {
     setOpen(true);
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Please select an image file", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Image must be under 5MB", variant: "destructive" });
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setExistingImageUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!imageFile) return existingImageUrl;
+    setUploading(true);
+
+    const ext = imageFile.name.split(".").pop();
+    const fileName = `${restaurantId}/${Date.now()}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from("dish-images")
+      .upload(fileName, imageFile, { upsert: true });
+
+    setUploading(false);
+
+    if (error) {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+      return existingImageUrl;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("dish-images")
+      .getPublicUrl(fileName);
+
+    return urlData.publicUrl;
+  };
+
   const handleSave = async () => {
     if (!name || !price || !restaurantId) return;
     setSaving(true);
+
+    const imageUrl = await uploadImage();
 
     const dishData = {
       restaurant_id: restaurantId,
@@ -61,7 +120,7 @@ export default function MenuManagement() {
       price: Number(price),
       category: category || "Main Course",
       description: description || null,
-      image_url: imageUrl || null,
+      image_url: imageUrl,
       is_veg: isVeg,
       is_popular: isPopular,
     };
@@ -95,6 +154,8 @@ export default function MenuManagement() {
     return <div className="container py-6 text-center"><p className="text-muted-foreground">No restaurant assigned.</p></div>;
   }
 
+  const currentPreview = imagePreview || existingImageUrl;
+
   return (
     <div className="container py-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -103,19 +164,65 @@ export default function MenuManagement() {
           <DialogTrigger asChild>
             <Button className="gap-2" onClick={openNew}><Plus className="h-4 w-4" /> Add Dish</Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle className="font-display">{editDish ? "Edit Dish" : "Add New Dish"}</DialogTitle></DialogHeader>
             <div className="space-y-4 py-4">
+              {/* Image Upload */}
+              <div className="space-y-2">
+                <Label>Dish Photo</Label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+                {currentPreview ? (
+                  <div className="relative rounded-lg overflow-hidden border">
+                    <img src={currentPreview} alt="Preview" className="w-full h-40 object-cover" />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 h-7 w-7"
+                      onClick={removeImage}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="absolute bottom-2 right-2 gap-1"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="h-3.5 w-3.5" /> Change
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="w-full h-40 border-2 border-dashed border-muted-foreground/25 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
+                    <span className="text-sm text-muted-foreground">Click to upload photo</span>
+                    <span className="text-xs text-muted-foreground/70">JPG, PNG up to 5MB</span>
+                  </button>
+                )}
+              </div>
+
               <div className="space-y-2"><Label>Name</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Dish name" /></div>
               <div className="space-y-2"><Label>Price (₹)</Label><Input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="249" /></div>
               <div className="space-y-2"><Label>Category</Label><Input value={category} onChange={e => setCategory(e.target.value)} placeholder="Main Course" /></div>
               <div className="space-y-2"><Label>Description</Label><Input value={description} onChange={e => setDescription(e.target.value)} placeholder="A brief description" /></div>
-              <div className="space-y-2"><Label>Image URL</Label><Input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." /></div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2"><Switch checked={isVeg} onCheckedChange={setIsVeg} /><Label>Vegetarian</Label></div>
                 <div className="flex items-center gap-2"><Switch checked={isPopular} onCheckedChange={setIsPopular} /><Label>Popular</Label></div>
               </div>
-              <Button className="w-full" onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "Save Dish"}</Button>
+              <Button className="w-full" onClick={handleSave} disabled={saving || uploading}>
+                {saving || uploading ? (
+                  <><Loader2 className="h-4 w-4 animate-spin mr-2" /> {uploading ? "Uploading..." : "Saving..."}</>
+                ) : "Save Dish"}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
