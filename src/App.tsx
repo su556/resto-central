@@ -17,6 +17,7 @@ import MenuManagement from "@/pages/admin/MenuManagement";
 import OrderManagement from "@/pages/admin/OrderManagement";
 import Offers from "@/pages/admin/Offers";
 import AdminRiders from "@/pages/admin/Riders";
+import UserManagement from "@/pages/admin/UserManagement";
 import RiderHome from "@/pages/rider/RiderHome";
 import NotFound from "@/pages/NotFound";
 import Auth from "@/pages/Auth";
