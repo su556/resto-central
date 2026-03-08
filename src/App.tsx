@@ -52,6 +52,7 @@ function AppRoutes() {
           <Route path="orders" element={<OrderManagement />} />
           <Route path="offers" element={<Offers />} />
           <Route path="riders" element={<AdminRiders />} />
+          <Route path="users" element={<UserManagement />} />
         </Route>
 
         {/* Rider routes — auth-gated */}
