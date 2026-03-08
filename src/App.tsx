@@ -18,6 +18,7 @@ import Offers from "@/pages/admin/Offers";
 import AdminRiders from "@/pages/admin/Riders";
 import RiderHome from "@/pages/rider/RiderHome";
 import NotFound from "@/pages/NotFound";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -34,8 +35,8 @@ function AppRoutes() {
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/track/:orderId" element={<OrderTracking />} />
 
-        {/* Admin routes */}
-        <Route path="/admin" element={<AdminLayout />}>
+        {/* Admin routes — PIN-gated */}
+        <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminLayout /></ProtectedRoute>}>
           <Route index element={<AdminDashboard />} />
           <Route path="menu" element={<MenuManagement />} />
           <Route path="orders" element={<OrderManagement />} />
@@ -43,8 +44,8 @@ function AppRoutes() {
           <Route path="riders" element={<AdminRiders />} />
         </Route>
 
-        {/* Rider routes */}
-        <Route path="/rider" element={<RiderHome />} />
+        {/* Rider routes — PIN-gated */}
+        <Route path="/rider" element={<ProtectedRoute requiredRole="rider"><RiderHome /></ProtectedRoute>} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>
