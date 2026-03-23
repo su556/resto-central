@@ -252,6 +252,68 @@ export type Database = {
           },
         ]
       }
+      restaurant_themes: {
+        Row: {
+          accent_color: string
+          background_color: string
+          banner_url: string | null
+          created_at: string
+          font_body: string
+          font_display: string
+          foreground_color: string
+          hero_subtitle: string | null
+          hero_title: string | null
+          id: string
+          logo_url: string | null
+          primary_color: string
+          restaurant_id: string
+          sections_config: Json
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string
+          background_color?: string
+          banner_url?: string | null
+          created_at?: string
+          font_body?: string
+          font_display?: string
+          foreground_color?: string
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string
+          restaurant_id: string
+          sections_config?: Json
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string
+          background_color?: string
+          banner_url?: string | null
+          created_at?: string
+          font_body?: string
+          font_display?: string
+          foreground_color?: string
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string
+          restaurant_id?: string
+          sections_config?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_themes_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: true
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurants: {
         Row: {
           address: string | null

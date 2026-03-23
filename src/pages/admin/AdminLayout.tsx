@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, UtensilsCrossed, ShoppingBag, Percent, Truck, Users, Settings } from "lucide-react";
+import { LayoutDashboard, UtensilsCrossed, ShoppingBag, Percent, Truck, Users, Settings, Paintbrush } from "lucide-react";
 
 const NAV = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -9,6 +9,7 @@ const NAV = [
   { to: "/admin/offers", label: "Offers", icon: Percent },
   { to: "/admin/riders", label: "Riders", icon: Truck },
   { to: "/admin/users", label: "Users", icon: Users },
+  { to: "/admin/customize", label: "Customize", icon: Paintbrush },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
