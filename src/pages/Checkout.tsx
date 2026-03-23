@@ -185,7 +185,7 @@ export default function Checkout() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Full Name</Label>
-            <Input placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} disabled={submitting} />
+            <Input placeholder="Your name" value={name} onChange={(e) => setName(e.target.value.slice(0, MAX_NAME_LENGTH))} disabled={submitting} maxLength={MAX_NAME_LENGTH} />
           </div>
           <div className="space-y-2">
             <Label>Phone Number</Label>
