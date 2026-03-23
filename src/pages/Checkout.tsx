@@ -12,6 +12,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
+const PHONE_REGEX = /^\+?[0-9]{10,15}$/;
+const MAX_NAME_LENGTH = 100;
+const MAX_ADDRESS_LENGTH = 300;
+
 export default function Checkout() {
   const { cart, cartTotal, clearCart } = useApp();
   const { user, profile } = useAuth();
@@ -25,9 +29,30 @@ export default function Checkout() {
   const deliveryFee = 40;
   const grandTotal = cartTotal + deliveryFee;
 
+  const validateInputs = (): string | null => {
+    const trimmedName = name.trim();
+    const trimmedPhone = phone.trim();
+    const trimmedAddress = address.trim();
+
+    if (!trimmedName || !trimmedPhone || !trimmedAddress) {
+      return "Please fill all fields";
+    }
+    if (trimmedName.length > MAX_NAME_LENGTH) {
+      return `Name must be under ${MAX_NAME_LENGTH} characters`;
+    }
+    if (!PHONE_REGEX.test(trimmedPhone)) {
+      return "Enter a valid phone number (10-15 digits)";
+    }
+    if (trimmedAddress.length > MAX_ADDRESS_LENGTH) {
+      return `Address must be under ${MAX_ADDRESS_LENGTH} characters`;
+    }
+    return null;
+  };
+
   const handlePay = async () => {
-    if (!name || !phone || !address) {
-      toast({ title: "Please fill all fields", variant: "destructive" });
+    const validationError = validateInputs();
+    if (validationError) {
+      toast({ title: validationError, variant: "destructive" });
       return;
     }
     if (!user) {
@@ -45,18 +70,17 @@ export default function Checkout() {
     setStep("paying");
 
     try {
-      // Step 1: Create order via edge function
+      // Send dish IDs + quantities — server will look up prices
       const { data: createData, error: createError } = await supabase.functions.invoke("create-order", {
         body: {
           restaurant_id: restaurantId,
-          customer_name: name,
-          customer_phone: phone,
-          address,
-          total: grandTotal,
+          customer_name: name.trim(),
+          customer_phone: phone.trim(),
+          address: address.trim(),
           items: cart.map((i) => ({
+            dish_id: i.dish.id,
             dish_name: i.dish.name,
             quantity: i.quantity,
-            price: i.dish.price,
           })),
         },
       });
@@ -68,19 +92,16 @@ export default function Checkout() {
       const { order_id, razorpay_order_id, razorpay_key_id, is_live, amount } = createData;
 
       if (is_live && razorpay_key_id) {
-        // Real Razorpay checkout
         await openRazorpayCheckout({
           key: razorpay_key_id,
           amount,
           order_id: razorpay_order_id,
           db_order_id: order_id,
-          prefill: { name, contact: phone },
+          prefill: { name: name.trim(), contact: phone.trim() },
         });
       } else {
-        // Mock payment flow — simulate 2s delay
         await new Promise((r) => setTimeout(r, 2000));
 
-        // Verify/confirm the order
         const { data: verifyData, error: verifyError } = await supabase.functions.invoke("verify-payment", {
           body: {
             order_id,
