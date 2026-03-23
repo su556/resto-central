@@ -55,6 +55,7 @@ function AppRoutes() {
           <Route path="offers" element={<Offers />} />
           <Route path="riders" element={<AdminRiders />} />
           <Route path="users" element={<UserManagement />} />
+          <Route path="customize" element={<Customize />} />
           <Route path="settings" element={<RestaurantSettings />} />
         </Route>
 
