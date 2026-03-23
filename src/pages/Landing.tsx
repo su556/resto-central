@@ -1,3 +1,4 @@
+import { useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -5,12 +6,32 @@ import { Badge } from "@/components/ui/badge";
 import { Star, Clock, MapPin, ChevronRight, Loader2, Phone } from "lucide-react";
 import { useApp } from "@/contexts/AppContext";
 import { useDefaultRestaurant, useDishes } from "@/hooks/useRestaurantData";
+import { useRestaurantTheme, applyThemeToDOM } from "@/hooks/useRestaurantTheme";
 
 export default function Landing() {
   const { addToCart } = useApp();
   const { restaurant, loading: rLoading } = useDefaultRestaurant();
   const { dishes, loading: dLoading } = useDishes(restaurant?.id ?? null);
+  const { theme, loading: thLoading } = useRestaurantTheme(restaurant?.id ?? null);
   const featured = dishes.filter(d => d.is_popular);
+
+  // Apply theme CSS vars on load
+  useEffect(() => {
+    if (theme) applyThemeToDOM(theme);
+  }, [theme]);
+
+  const sections = useMemo(() => {
+    if (!theme) return [
+      { key: "hero", visible: true, order: 0 },
+      { key: "popular_dishes", visible: true, order: 1 },
+      { key: "about_us", visible: true, order: 2 },
+      { key: "hours", visible: true, order: 3 },
+    ];
+    return Object.entries(theme.sections_config)
+      .map(([key, cfg]) => ({ key, ...cfg }))
+      .filter(s => s.visible)
+      .sort((a, b) => a.order - b.order);
+  }, [theme]);
 
   const getOpenStatus = () => {
     const hours = (restaurant as any)?.operating_hours;
@@ -29,7 +50,7 @@ export default function Landing() {
   };
   const openStatus = getOpenStatus();
 
-  if (rLoading || dLoading) {
+  if (rLoading || dLoading || thLoading) {
     return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
 
@@ -37,95 +58,110 @@ export default function Landing() {
     return <div className="container py-16 text-center"><p className="text-muted-foreground">No restaurant found.</p></div>;
   }
 
-  return (
-    <div>
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-secondary to-background py-16 md:py-24">
-        <div className="container text-center space-y-6">
-          <div className="flex items-center justify-center gap-3 flex-wrap">
-            <Badge variant="secondary" className="text-sm px-4 py-1.5">
-              <Star className="h-3.5 w-3.5 mr-1 fill-warning text-warning" />
-              {restaurant.rating} • {restaurant.review_count.toLocaleString()} reviews
-            </Badge>
-            {openStatus && (
-              <Badge className={`text-sm px-4 py-1.5 ${openStatus.isOpen ? "bg-success/15 text-success border-success/30 hover:bg-success/20" : "bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20"}`} variant="outline">
-                <span className={`h-2 w-2 rounded-full mr-2 ${openStatus.isOpen ? "bg-success animate-pulse" : "bg-destructive"}`} />
-                {openStatus.label}
-              </Badge>
-            )}
-          </div>
-          <h1 className="text-4xl md:text-6xl font-display font-bold tracking-tight text-foreground">
-            {restaurant.name}
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-            {restaurant.tagline}
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link to="/menu">
-              <Button size="lg" className="text-base px-8 gap-2">
-                Order Now <ChevronRight className="h-4 w-4" />
-              </Button>
-            </Link>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> 30-45 min</span>
-              <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> 5 km</span>
-            </div>
-          </div>
-        </div>
-      </section>
+  const heroTitle = theme?.hero_title || restaurant.name;
+  const heroSubtitle = theme?.hero_subtitle || restaurant.tagline;
 
-      <section className="container py-12 space-y-8">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl md:text-3xl font-display font-bold">Popular Dishes</h2>
-          <Link to="/menu"><Button variant="ghost" className="gap-1">View All <ChevronRight className="h-4 w-4" /></Button></Link>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {featured.map(dish => (
-            <Card key={dish.id} className="overflow-hidden group hover:shadow-lg transition-shadow">
-              <div className="aspect-video overflow-hidden">
-                <img src={dish.image_url || "/placeholder.svg"} alt={dish.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+  const renderSection = (key: string) => {
+    switch (key) {
+      case "hero":
+        return (
+          <section key="hero" className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-secondary to-background py-16 md:py-24" style={theme?.banner_url ? { backgroundImage: `url(${theme.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
+            {theme?.banner_url && <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" />}
+            <div className="container text-center space-y-6 relative z-10">
+              {theme?.logo_url && (
+                <div className="flex justify-center mb-4">
+                  <img src={theme.logo_url} alt="Logo" className="h-20 w-auto object-contain" />
+                </div>
+              )}
+              <div className="flex items-center justify-center gap-3 flex-wrap">
+                <Badge variant="secondary" className="text-sm px-4 py-1.5">
+                  <Star className="h-3.5 w-3.5 mr-1 fill-warning text-warning" />
+                  {restaurant.rating} • {restaurant.review_count.toLocaleString()} reviews
+                </Badge>
+                {openStatus && (
+                  <Badge className={`text-sm px-4 py-1.5 ${openStatus.isOpen ? "bg-success/15 text-success border-success/30 hover:bg-success/20" : "bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20"}`} variant="outline">
+                    <span className={`h-2 w-2 rounded-full mr-2 ${openStatus.isOpen ? "bg-success animate-pulse" : "bg-destructive"}`} />
+                    {openStatus.label}
+                  </Badge>
+                )}
               </div>
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className={`h-3 w-3 rounded-sm border ${dish.is_veg ? "border-success bg-success/20" : "border-destructive bg-destructive/20"}`} />
-                      <h3 className="font-semibold font-display">{dish.name}</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{dish.description}</p>
-                  </div>
+              <h1 className="text-4xl md:text-6xl font-display font-bold tracking-tight text-foreground">{heroTitle}</h1>
+              {heroSubtitle && <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">{heroSubtitle}</p>}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Link to="/menu">
+                  <Button size="lg" className="text-base px-8 gap-2">Order Now <ChevronRight className="h-4 w-4" /></Button>
+                </Link>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> 30-45 min</span>
+                  <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> 5 km</span>
                 </div>
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-lg font-bold">₹{dish.price}</span>
-                  <Button size="sm" onClick={() => addToCart(dish)}>Add</Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      <section className="bg-card border-t">
-        <div className="container py-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-4xl mx-auto">
-            <div className="space-y-4">
-              <h2 className="text-2xl font-display font-bold">About Us</h2>
-              <p className="text-muted-foreground">{restaurant.description}</p>
-              {restaurant.address && (
-                <p className="text-sm text-muted-foreground flex items-start gap-2">
-                  <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
-                  {restaurant.address}
-                </p>
-              )}
-              {restaurant.phone && (
-                <p className="text-sm text-muted-foreground flex items-center gap-2">
-                  <Phone className="h-4 w-4 shrink-0 text-primary" />
-                  {restaurant.phone}
-                </p>
-              )}
+              </div>
             </div>
+          </section>
+        );
 
-            {(restaurant as any).operating_hours && (
-              <div className="space-y-4">
+      case "popular_dishes":
+        return (
+          <section key="popular_dishes" className="container py-12 space-y-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl md:text-3xl font-display font-bold">Popular Dishes</h2>
+              <Link to="/menu"><Button variant="ghost" className="gap-1">View All <ChevronRight className="h-4 w-4" /></Button></Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featured.map(dish => (
+                <Card key={dish.id} className="overflow-hidden group hover:shadow-lg transition-shadow">
+                  <div className="aspect-video overflow-hidden">
+                    <img src={dish.image_url || "/placeholder.svg"} alt={dish.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  </div>
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`h-3 w-3 rounded-sm border ${dish.is_veg ? "border-success bg-success/20" : "border-destructive bg-destructive/20"}`} />
+                          <h3 className="font-semibold font-display">{dish.name}</h3>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{dish.description}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-lg font-bold">₹{dish.price}</span>
+                      <Button size="sm" onClick={() => addToCart(dish)}>Add</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        );
+
+      case "about_us":
+        return (
+          <section key="about_us" className="bg-card border-t">
+            <div className="container py-12">
+              <div className="max-w-4xl mx-auto space-y-4">
+                <h2 className="text-2xl font-display font-bold">About Us</h2>
+                <p className="text-muted-foreground">{restaurant.description}</p>
+                {restaurant.address && (
+                  <p className="text-sm text-muted-foreground flex items-start gap-2">
+                    <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-primary" />{restaurant.address}
+                  </p>
+                )}
+                {restaurant.phone && (
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Phone className="h-4 w-4 shrink-0 text-primary" />{restaurant.phone}
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+        );
+
+      case "hours":
+        if (!(restaurant as any).operating_hours) return null;
+        return (
+          <section key="hours" className="bg-card border-t">
+            <div className="container py-12">
+              <div className="max-w-md mx-auto space-y-4">
                 <h2 className="text-2xl font-display font-bold flex items-center gap-2">
                   <Clock className="h-5 w-5 text-primary" /> Hours
                 </h2>
@@ -146,10 +182,14 @@ export default function Landing() {
                   })}
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-      </section>
-    </div>
-  );
+            </div>
+          </section>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return <div>{sections.map(s => renderSection(s.key))}</div>;
 }

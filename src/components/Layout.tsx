@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApp } from "@/contexts/AppContext";
+import { useDefaultRestaurant } from "@/hooks/useRestaurantData";
+import { useRestaurantTheme } from "@/hooks/useRestaurantTheme";
 import { ShoppingCart, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,13 +10,24 @@ import { Badge } from "@/components/ui/badge";
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, role, profile, signOut } = useAuth();
   const { cartCount } = useApp();
+  const { restaurant } = useDefaultRestaurant();
+  const { theme } = useRestaurantTheme(restaurant?.id ?? null);
+
+  const logoElement = theme?.logo_url ? (
+    <img src={theme.logo_url} alt={restaurant?.name ?? "Logo"} className="h-8 w-auto object-contain" />
+  ) : null;
+
+  const brandName = restaurant?.name ?? "Spice Garden";
 
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <span className="text-xl font-display font-bold text-primary">🍛 Spice Garden</span>
+            {logoElement}
+            <span className="text-xl font-display font-bold text-primary">
+              {!logoElement && "🍛 "}{brandName}
+            </span>
           </Link>
 
           <div className="flex items-center gap-2">
