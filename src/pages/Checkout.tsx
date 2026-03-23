@@ -193,7 +193,7 @@ export default function Checkout() {
           </div>
           <div className="space-y-2">
             <Label>Delivery Address</Label>
-            <Textarea placeholder="Full address with landmark" value={address} onChange={(e) => setAddress(e.target.value)} disabled={submitting} />
+            <Textarea placeholder="Full address with landmark" value={address} onChange={(e) => setAddress(e.target.value.slice(0, MAX_ADDRESS_LENGTH))} disabled={submitting} maxLength={MAX_ADDRESS_LENGTH} />
           </div>
         </CardContent>
       </Card>
