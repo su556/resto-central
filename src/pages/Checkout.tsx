@@ -189,7 +189,7 @@ export default function Checkout() {
           </div>
           <div className="space-y-2">
             <Label>Phone Number</Label>
-            <Input placeholder="+91 XXXXX XXXXX" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={submitting} />
+            <Input placeholder="+91 XXXXX XXXXX" value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^0-9+]/g, "").slice(0, 15))} disabled={submitting} maxLength={15} />
           </div>
           <div className="space-y-2">
             <Label>Delivery Address</Label>
